@@ -1,42 +1,57 @@
-# Docs for the Azure Web Apps Deploy action: https://github.com/azure/functions-action
-# More GitHub Actions for Azure: https://github.com/Azure/actions
-
-name: Build and deploy dotnet core project to Azure Function App - blobmagic-ssw-ass
-
+name: Build and deploy .NET Core application to Function App BlobMagic-SSW-AzureSuperSkill with API Management Service BlobMagicapi-BlobMagic
 on:
   push:
     branches:
-      - master
-  workflow_dispatch:
-
+    - main
 env:
-  AZURE_FUNCTIONAPP_PACKAGE_PATH: '.' # set this to the path to your web app project, defaults to the repository root
-  DOTNET_VERSION: '6.0.x' # set this to the dotnet version to use
-
+  AZURE_FUNCTIONAPP_NAME: BlobMagic-SSW-AzureSuperSkill
+  AZURE_FUNCTIONAPP_PACKAGE_PATH: ./.
+  CONFIGURATION: Release
+  DOTNET_CORE_VERSION: 6.0.x
+  WORKING_DIRECTORY: .
+  AZURE_APIM_RESOURCEGROUP: blobmagic-group
+  AZURE_APIM_SERVICENAME: BlobMagicapi
+  AZURE_APIM_API_ID: BlobMagic
+  AZURE_APIM_RESOURCE_PATH: /
+  AZURE_APIM_SWAGGERURL: ''
 jobs:
-  build-and-deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
-      - name: 'Checkout GitHub Action'
-        uses: actions/checkout@v2
-
-      - name: Setup DotNet ${{ env.DOTNET_VERSION }} Environment
-        uses: actions/setup-dotnet@v1
-        with:
-          dotnet-version: ${{ env.DOTNET_VERSION }}
-
-      - name: 'Resolve Project Dependencies Using Dotnet'
-        shell: bash
-        run: |
-          pushd './${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}'
-          dotnet build --configuration Release --output ./output
-          popd
-
-      - name: 'Run Azure Functions Action'
-        uses: Azure/functions-action@v1
-        id: fa
-        with:
-          app-name: 'blobmagic-ssw-ass'
-          slot-name: 'Production'
-          package: '${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}/output'
-          publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_6FC2A4188F5C4B068C7337E795623A6A }}
+    - uses: actions/checkout@v3
+    - name: Setup .NET SDK
+      uses: actions/setup-dotnet@v3
+      with:
+        dotnet-version: ${{ env.DOTNET_CORE_VERSION }}
+    - name: Restore
+      run: dotnet restore "${{ env.WORKING_DIRECTORY }}"
+    - name: Build
+      run: dotnet build "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-restore
+    - name: Publish
+      run: dotnet publish "${{ env.WORKING_DIRECTORY }}" --configuration ${{ env.CONFIGURATION }} --no-build --output "${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}"
+    - name: Publish Artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: functionapp
+        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+  deploy:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Download artifact from build job
+      uses: actions/download-artifact@v3
+      with:
+        name: functionapp
+        path: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+    - name: Deploy to Azure Function App
+      uses: Azure/functions-action@v1
+      with:
+        app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
+        publish-profile: ${{ secrets.BlobMagic_SSW_AzureSuperSkill_9F08 }}
+        package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
+    - name: Azure Login
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.BlobMagicapi_SPN }}
+    - name: Import API into Azure API Management
+      run: az apim api import --path "${{ env.AZURE_APIM_RESOURCE_PATH }}" --resource-group ${{ env.AZURE_APIM_RESOURCEGROUP }} --service-name ${{ env.AZURE_APIM_SERVICENAME }} --api-id ${{ env.AZURE_APIM_API_ID }} --specification-url "${{ env.AZURE_APIM_SWAGGERURL }}" --specification-format OpenApi --subscription-required false
