@@ -32,7 +32,8 @@ namespace BlobMagic
             // https://learn.microsoft.com/en-us/azure/azure-functions/functions-bindings-storage-blob?tabs=in-process%2Cextensionv5%2Cextensionv3&pivots=programming-language-csharp#binding-types
             [Blob("names", FileAccess.Write)] BlobContainerClient blobClient)
         {
-            _logger.LogInformation("C# HTTP trigger function processed a request.");
+            _logger.LogInformation("C# HTTP trigger function  processed a request.");
+
 
             string name = req.Query["name"];
 
