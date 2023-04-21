@@ -42,5 +42,5 @@ jobs:
       uses: Azure/functions-action@v1
       with:
         app-name: ${{ env.AZURE_FUNCTIONAPP_NAME }}
-        publish-profile: ${{ secrets.BlobMagic_SSW_AzureSuperSkill_0904 }}
+        publish-profile: ${{ secrets.AZUREAPPSERVICE_PUBLISHPROFILE_338A8641DC084643BB1129D7834AAA9B }}
         package: ${{ env.AZURE_FUNCTIONAPP_PACKAGE_PATH }}
